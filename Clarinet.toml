@@ -4,6 +4,10 @@ authors = []
 description = ""
 telemetry = false
 requirements = []
+[contracts.farmo-participants]
+path = "contracts/farmo-participants.clar"
+depends_on = []
+
 [contracts.farmo-registry]
 path = "contracts/farmo-registry.clar"
 depends_on = []
