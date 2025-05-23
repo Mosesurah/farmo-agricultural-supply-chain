@@ -259,76 +259,6 @@
   )
 )
 
-;; Update a participant's reputation score
-(define-public (update-reputation-score (participant-id principal) (score-change int))
-  (let ((caller tx-sender)
-        (current-time (unwrap-panic (get-block-info? time (- block-height u1)))))
-    (asserts! (or (is-verifier caller) (is-admin caller)) ERR-ONLY-VERIFIER)
-    (asserts! (participant-exists participant-id) ERR-PARTICIPANT-NOT-FOUND)
-    
-    (let ((participant (unwrap-panic (map-get? participants participant-id)))
-          (current-score (get reputation-score participant))
-          (new-score (if (< score-change i0)
-                         (if (>= (to-int current-score) (abs score-change))
-                            (to-uint (+ (to-int current-score) score-change))
-                            u0)
-                         (+ current-score (to-uint score-change)))))
-      
-      (map-set participants participant-id
-        (merge participant 
-          {
-            reputation-score: new-score,
-            last-updated: current-time
-          }
-        )
-      )
-      (ok true)
-    )
-  )
-)
-
-;; Add a new verifier
-(define-public (add-verifier (verifier-id principal))
-  (let ((caller tx-sender)
-        (current-time (unwrap-panic (get-block-info? time (- block-height u1)))))
-    (asserts! (is-admin caller) ERR-ONLY-ADMIN)
-    
-    ;; If the verifier is not already a participant, register them
-    (if (not (participant-exists verifier-id))
-      (map-set participants verifier-id
-        {
-          id: verifier-id,
-          name: "",
-          role: ROLE-VERIFIER,
-          status: STATUS-VERIFIED,
-          reputation-score: u0,
-          location: "",
-          registration-date: current-time,
-          last-updated: current-time,
-          verifier: (some caller),
-          metadata: ""
-        }
-      )
-      ;; If they are a participant, update their role to verifier
-      (let ((participant (unwrap-panic (map-get? participants verifier-id))))
-        (map-set participants verifier-id
-          (merge participant 
-            {
-              role: ROLE-VERIFIER,
-              status: STATUS-VERIFIED,
-              last-updated: current-time,
-              verifier: (some caller)
-            }
-          )
-        )
-      )
-    )
-    
-    (map-set verifiers verifier-id true)
-    (increment-role-count ROLE-VERIFIER)
-    (ok true)
-  )
-)
 
 ;; Remove a verifier
 (define-public (remove-verifier (verifier-id principal))
@@ -342,94 +272,12 @@
   )
 )
 
-;; Add a new admin
-(define-public (add-admin (admin-id principal))
-  (let ((caller tx-sender)
-        (current-time (unwrap-panic (get-block-info? time (- block-height u1)))))
-    (asserts! (is-contract-owner caller) ERR-ONLY-ADMIN)
-    
-    ;; If the admin is not already a participant, register them
-    (if (not (participant-exists admin-id))
-      (map-set participants admin-id
-        {
-          id: admin-id,
-          name: "",
-          role: ROLE-ADMIN,
-          status: STATUS-VERIFIED,
-          reputation-score: u0,
-          location: "",
-          registration-date: current-time,
-          last-updated: current-time,
-          verifier: (some caller),
-          metadata: ""
-        }
-      )
-      ;; If they are a participant, update their role to admin
-      (let ((participant (unwrap-panic (map-get? participants admin-id))))
-        (map-set participants admin-id
-          (merge participant 
-            {
-              role: ROLE-ADMIN,
-              status: STATUS-VERIFIED,
-              last-updated: current-time,
-              verifier: (some caller)
-            }
-          )
-        )
-      )
-    )
-    
-    (map-set admins admin-id true)
-    (increment-role-count ROLE-ADMIN)
-    (ok true)
-  )
-)
-
-;; Remove an admin
-(define-public (remove-admin (admin-id principal))
-  (let ((caller tx-sender))
-    (asserts! (is-contract-owner caller) ERR-ONLY-ADMIN)
-    (asserts! (map-get? admins admin-id) ERR-NOT-AUTHORIZED)
-    
-    (map-delete admins admin-id)
-    (decrement-role-count ROLE-ADMIN)
-    (ok true)
-  )
-)
 
 ;; Transfer contract ownership
 (define-public (transfer-ownership (new-owner principal))
   (let ((caller tx-sender))
     (asserts! (is-contract-owner caller) ERR-ONLY-ADMIN)
     (var-set contract-owner new-owner)
-    (ok true)
-  )
-)
-
-;; Initialize the first admin (only callable once by the contract deployer)
-(define-public (initialize-first-admin)
-  (let ((caller tx-sender)
-        (current-time (unwrap-panic (get-block-info? time (- block-height u1)))))
-    (asserts! (is-contract-owner caller) ERR-ONLY-ADMIN)
-    
-    ;; Register the contract owner as an admin if not already done
-    (map-set participants caller
-      {
-        id: caller,
-        name: "",
-        role: ROLE-ADMIN,
-        status: STATUS-VERIFIED,
-        reputation-score: u0,
-        location: "",
-        registration-date: current-time,
-        last-updated: current-time,
-        verifier: (some caller),
-        metadata: ""
-      }
-    )
-    
-    (map-set admins caller true)
-    (increment-role-count ROLE-ADMIN)
     (ok true)
   )
 )
